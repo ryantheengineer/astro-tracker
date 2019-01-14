@@ -1,21 +1,35 @@
 /*
   Barn Door Driver
-  Written by Theron Wierenga
-  July 18, 2014
+  Modified from original code written by Theron Wierenga, July 18, 2014
+  January 13, 2019
   */
 
-// Include the library code for LiquidCrystal display
-#include <LiquidCrystal.h>
-// Initialize the LiquidCrystal library with 
-// the numbers of the interface pins
-// needed for SainSmart LCD Keypad Shield
-LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
+#include "Arduino.h"
+#include "StepperMotor.h"
+#include "HotStepper.h"
+
+// Instantiate some stepper motors
+HotStepper stepper1(&PORTB, 0b00011101);
+HotStepper stepper2(&PORTD, 0b11110000);
+
+byte dir1;
+byte dir2;
+
+
+
+
+// // Include the library code for LiquidCrystal display
+// #include <LiquidCrystal.h>
+// // Initialize the LiquidCrystal library with
+// // the numbers of the interface pins
+// // needed for SainSmart LCD Keypad Shield
+// LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
 // 4 bit stepper motor patterns for full step and half step
 byte fullsteps[4] = {0x06, 0x0A, 0x09, 0x05};
 byte halfsteps[8] = {0x04, 0x06, 0x02, 0x0A, 0x08, 0x09, 0x01, 0x05};
 // Sidereal conversion
 float sidereal_conv = 1.0/0.99726958;
-// Angle in radians for three hours, or 45 degrees 
+// Angle in radians for three hours, or 45 degrees
 float three_hour_angle = 3.1415926 / 4.0;
 // PI
 float pi = 3.1415926;
@@ -60,15 +74,24 @@ int temp = 0;
 
 
 void setup() {
-  // Set up the LCD's number of rows and columns: 
-  lcd.begin(16, 2);
-  // Print a message to the LCD.
-  lcd.print("Starting");
-  delay(1500);
-  // Declare port C pins as outputs
-  DDRC = B11111111;
-  // Set port C output pins to all zero
-  PORTC = B00000000;
+  dir1 = FORWARD;
+  dir2 = FORWARD;
+  // Make sure the ports and timer are configured
+  HotStepper::setup();
+  // Control the steppers
+  stepper1.turn(10,dir1);
+  stepper2.turn(20,dir2);
+
+
+  // // Set up the LCD's number of rows and columns:
+  // lcd.begin(16, 2);
+  // // Print a message to the LCD.
+  // lcd.print("Starting");
+  // delay(1500);
+  // // Declare port C pins as outputs
+  // DDRC = B11111111;
+  // // Set port C output pins to all zero
+  // PORTC = B00000000;
 }
 
 void loop() {
@@ -78,7 +101,7 @@ void loop() {
       solar_time = float(millis())/1000.0;
       // Convert solar time to sidereal time
       sidereal = solar_time * sidereal_conv;
-      // Advance lcount, each 400 times through the loop it 
+      // Advance lcount, each 400 times through the loop it
       // will update the LCD display
       lcount = lcount + 1L;
       if (lcount == 400)
@@ -111,7 +134,7 @@ void loop() {
             // do nothing, reset to restart)
          }
       }
-      // Convert this angle from radians to degrees 
+      // Convert this angle from radians to degrees
       // for easy reading on the LCD display
       degangle = theta * 180.0/ pi;
       // Calculate the angle psi, knowing theta
@@ -124,7 +147,7 @@ void loop() {
       rc = r - correction;
       // Calculate d, the distance the threaded rod needs to travel
       d = (rc *sin(theta)) / sin(psi);
-      // Calculate the number of steps needed to 
+      // Calculate the number of steps needed to
       // have the threaded rod travel distance d
       // Change 200.0 to 400.0 if using halfstep_motor()
       steps = d * 28.0 * 200.0;
@@ -133,7 +156,7 @@ void loop() {
       // We need to add a step, or more, to have isteps correct
       while (last_isteps < isteps)
       {
-         // halfstep_motor() can be used here, 
+         // halfstep_motor() can be used here,
          // steps formula will need changing above
          fullstep_motor(up);
          last_isteps = last_isteps + 1L;
@@ -142,12 +165,12 @@ void loop() {
   else
   {
        // If slow = false, then slew fast
-       // halfstep_motor() can be used here, 
+       // halfstep_motor() can be used here,
        // steps formula will need changing above
        fullstep_motor(up);
        // Let stepper motor settle, this may need to be adjusted
-       // for other stepper motors to get maximum speed 
-       delay(5); 
+       // for other stepper motors to get maximum speed
+       delay(5);
   }
   // Read switches
   temp = analogRead(0);
@@ -162,76 +185,76 @@ void loop() {
 
 }
 
-void halfstep_motor(boolean forward)
-{
-  switch (step_count)
-  {
-     case 0: PORTC = halfsteps[0];
-             break; 
-     case 1: PORTC = halfsteps[1];
-             break; 
-     case 2: PORTC = halfsteps[2];
-             break; 
-     case 3: PORTC = halfsteps[3];
-             break; 
-     case 4: PORTC = halfsteps[4];
-             break; 
-     case 5: PORTC = halfsteps[5];
-             break; 
-     case 6: PORTC = halfsteps[6];
-             break; 
-     case 7: PORTC = halfsteps[7];
-             break; 
-  }
-  if (forward)
-  {
-    step_count = step_count + 1;
-    if (step_count > 7)
-    { 
-       step_count = 0;
-    }
-    return; 
-  }
-  else
-  {
-    step_count = step_count - 1; 
-    if (step_count < 0)
-    {
-       step_count = 7; 
-    }
-    return;
-  }
-}
-
-void fullstep_motor(boolean forward)
-{
-  switch (step_count)
-  {
-     case 0: PORTC = fullsteps[0];
-             break; 
-     case 1: PORTC = fullsteps[1];
-             break; 
-     case 2: PORTC = fullsteps[2];
-             break; 
-     case 3: PORTC = fullsteps[3];
-             break; 
-  }
-  if (forward)
-  {
-    step_count = step_count + 1;
-    if (step_count > 3)
-    { 
-       step_count = 0;
-    }
-    return; 
-  }
-  else
-  {
-    step_count = step_count - 1; 
-    if (step_count < 0)
-    {
-       step_count = 3; 
-    }
-    return;
-  }  
-}
+// void halfstep_motor(boolean forward)
+// {
+//   switch (step_count)
+//   {
+//      case 0: PORTC = halfsteps[0];
+//              break;
+//      case 1: PORTC = halfsteps[1];
+//              break;
+//      case 2: PORTC = halfsteps[2];
+//              break;
+//      case 3: PORTC = halfsteps[3];
+//              break;
+//      case 4: PORTC = halfsteps[4];
+//              break;
+//      case 5: PORTC = halfsteps[5];
+//              break;
+//      case 6: PORTC = halfsteps[6];
+//              break;
+//      case 7: PORTC = halfsteps[7];
+//              break;
+//   }
+//   if (forward)
+//   {
+//     step_count = step_count + 1;
+//     if (step_count > 7)
+//     {
+//        step_count = 0;
+//     }
+//     return;
+//   }
+//   else
+//   {
+//     step_count = step_count - 1;
+//     if (step_count < 0)
+//     {
+//        step_count = 7;
+//     }
+//     return;
+//   }
+// }
+//
+// void fullstep_motor(boolean forward)
+// {
+//   switch (step_count)
+//   {
+//      case 0: PORTC = fullsteps[0];
+//              break;
+//      case 1: PORTC = fullsteps[1];
+//              break;
+//      case 2: PORTC = fullsteps[2];
+//              break;
+//      case 3: PORTC = fullsteps[3];
+//              break;
+//   }
+//   if (forward)
+//   {
+//     step_count = step_count + 1;
+//     if (step_count > 3)
+//     {
+//        step_count = 0;
+//     }
+//     return;
+//   }
+//   else
+//   {
+//     step_count = step_count - 1;
+//     if (step_count < 0)
+//     {
+//        step_count = 3;
+//     }
+//     return;
+//   }
+// }
