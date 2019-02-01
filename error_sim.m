@@ -11,8 +11,8 @@ true_theta = zeros(length(solar_time));
 
 r = 12;   % inches, arbitrary
 
-tpi = 28;   % threads per inch
-spr = 400;  % steps per revolution      
+tpi = 18;   % threads per inch
+spr = 600;  % steps per revolution      
 % It looks like changing the steps per revolution is the best way to decrease instantaneous error
 
 total_steps = 0;
