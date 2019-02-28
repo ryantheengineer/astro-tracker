@@ -4,29 +4,31 @@
   January 13, 2019
   */
 
-#include "Arduino.h"
-#include "StepperMotor.h"
-#include "HotStepper.h"
+#include <Arduino.h>
+#include <Stepper.h>
+//#include <Timer.h>
+//#include <StepperMotor.h>
 
-// Instantiate some stepper motors
-HotStepper stepper1(&PORTB, 0b00011101);
-HotStepper stepper2(&PORTD, 0b11110000);
+const int spr = 200;
 
-byte dir1;
-byte dir2;
+Stepper myStepper(spr,8,9,10,11);
 
 
 
 
-// // Include the library code for LiquidCrystal display
-// #include <LiquidCrystal.h>
-// // Initialize the LiquidCrystal library with
-// // the numbers of the interface pins
-// // needed for SainSmart LCD Keypad Shield
-// LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
-// 4 bit stepper motor patterns for full step and half step
-byte fullsteps[4] = {0x06, 0x0A, 0x09, 0x05};
-byte halfsteps[8] = {0x04, 0x06, 0x02, 0x0A, 0x08, 0x09, 0x01, 0x05};
+//// // Include the library code for LiquidCrystal display
+//// #include <LiquidCrystal.h>
+//// // Initialize the LiquidCrystal library with
+//// // the numbers of the interface pins
+//// // needed for SainSmart LCD Keypad Shield
+//// LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
+//// 4 bit stepper motor patterns for full step and half step
+//byte fullsteps[4] = {0x06, 0x0A, 0x09, 0x05};
+//byte halfsteps[8] = {0x04, 0x06, 0x02, 0x0A, 0x08, 0x09, 0x01, 0x05};
+
+
+
+
 // Sidereal conversion
 float sidereal_conv = 1.0/0.99726958;
 // Angle in radians for three hours, or 45 degrees
@@ -72,15 +74,17 @@ int step_count = 0;
 // Analog value used to read switches
 int temp = 0;
 
+int stepCount = 0;
+
 
 void setup() {
-  dir1 = FORWARD;
-  dir2 = FORWARD;
-  // Make sure the ports and timer are configured
-  HotStepper::setup();
-  // Control the steppers
-  stepper1.turn(10,dir1);
-  stepper2.turn(20,dir2);
+//  dir1 = FORWARD;
+//  dir2 = FORWARD;
+//  // Make sure the ports and timer are configured
+//  HotStepper::setup();
+//  // Control the steppers
+//  stepper1.turn(10,dir1);
+//  stepper2.turn(20,dir2);
 
 
   // // Set up the LCD's number of rows and columns:
@@ -92,6 +96,8 @@ void setup() {
   // DDRC = B11111111;
   // // Set port C output pins to all zero
   // PORTC = B00000000;
+
+  Serial.begin(9600);
 }
 
 void loop() {
@@ -104,22 +110,22 @@ void loop() {
       // Advance lcount, each 400 times through the loop it
       // will update the LCD display
       lcount = lcount + 1L;
-      if (lcount == 400)
-      {
-        // Set the cursor to column 0, line 1
-        // Line 1 is the second row, since counting begins with 0
-        lcd.setCursor(0,0);
-        // Display sidereal time in seconds
-        lcd.print("Sid'eal="); lcd.print(sidereal);
-        lcd.setCursor(0, 1);
-        // Display number of steps
-        lcd.print(isteps);
-        lcd.setCursor(10, 1);
-        // Display the angle made by the two boards in degrees
-        lcd.print(degangle);
-        // Reset the counter
-        lcount = 0;
-      }
+//      if (lcount == 400)
+//      {
+//        // Set the cursor to column 0, line 1
+//        // Line 1 is the second row, since counting begins with 0
+//        lcd.setCursor(0,0);
+//        // Display sidereal time in seconds
+//        lcd.print("Sid'eal="); lcd.print(sidereal);
+//        lcd.setCursor(0, 1);
+//        // Display number of steps
+//        lcd.print(isteps);
+//        lcd.setCursor(10, 1);
+//        // Display the angle made by the two boards in degrees
+//        lcd.print(degangle);
+//        // Reset the counter
+//        lcount = 0;
+//      }
       // Calculate the angle theta needed at this time
       theta = (sidereal / 10800.0) * three_hour_angle;
       // Do a safety check if left unattended
@@ -158,7 +164,14 @@ void loop() {
       {
          // halfstep_motor() can be used here,
          // steps formula will need changing above
-         fullstep_motor(up);
+
+         myStepper.step(1);
+         Serial.println(stepCount);
+         Serial.println(degangle);
+         stepCount++;
+         
+//         fullstep_motor(up);
+         
          last_isteps = last_isteps + 1L;
       }
   }
@@ -167,23 +180,58 @@ void loop() {
        // If slow = false, then slew fast
        // halfstep_motor() can be used here,
        // steps formula will need changing above
-       fullstep_motor(up);
+
+       myStepper.step(1);
+//       fullstep_motor(up);
+       
        // Let stepper motor settle, this may need to be adjusted
        // for other stepper motors to get maximum speed
        delay(5);
   }
-  // Read switches
-  temp = analogRead(0);
-
-  //if (temp > 1000) {}                               // LCD board, no button pushed
-  if ((temp > 710) && (temp < 750)) {slow = true;}    // LCD board, Select pushed, run at sideral rate
-  if ((temp > 490) && (temp < 510)) {slow = false;}   // LCD board, Left pushed,   run at slew rate
-  if ((temp > 320) && (temp < 340)) {up = false;}     // LCD board, Down pushed,   run down
-  if ((temp > 140) && (temp < 160)) {up = true;}      // LCD board, Up pushed,     run up
-  //if (temp < 30) {}                                 // LCD board, Right pushed
-
-
 }
+//  // Read switches
+//  temp = analogRead(0);
+//
+//  //if (temp > 1000) {}                               // LCD board, no button pushed
+//  if ((temp > 710) && (temp < 750)) {slow = true;}    // LCD board, Select pushed, run at sideral rate
+//  if ((temp > 490) && (temp < 510)) {slow = false;}   // LCD bovoid fullstep_motor(boolean forward)
+// {
+//   switch (step_count)
+//   {
+//      case 0: PORTC = fullsteps[0];
+//              break;
+//      case 1: PORTC = fullsteps[1];
+//              break;
+//      case 2: PORTC = fullsteps[2];
+//              break;
+//      case 3: PORTC = fullsteps[3];
+//              break;
+//   }
+//   if (forward)
+//   {
+//     step_count = step_count + 1;
+//     if (step_count > 3)
+//     {
+//        step_count = 0;
+//     }
+//     return;
+//   }
+//   else
+//   {
+//     step_count = step_count - 1;
+//     if (step_count < 0)
+//     {
+//        step_count = 3;
+//     }
+//     return;
+//   }
+// }ard, Left pushed,   run at slew rate
+//  if ((temp > 320) && (temp < 340)) {up = false;}     // LCD board, Down pushed,   run down
+//  if ((temp > 140) && (temp < 160)) {up = true;}      // LCD board, Up pushed,     run up
+//  //if (temp < 30) {}                                 // LCD board, Right pushed
+//
+//
+//}
 
 // void halfstep_motor(boolean forward)
 // {
@@ -226,35 +274,4 @@ void loop() {
 //   }
 // }
 //
-// void fullstep_motor(boolean forward)
-// {
-//   switch (step_count)
-//   {
-//      case 0: PORTC = fullsteps[0];
-//              break;
-//      case 1: PORTC = fullsteps[1];
-//              break;
-//      case 2: PORTC = fullsteps[2];
-//              break;
-//      case 3: PORTC = fullsteps[3];
-//              break;
-//   }
-//   if (forward)
-//   {
-//     step_count = step_count + 1;
-//     if (step_count > 3)
-//     {
-//        step_count = 0;
-//     }
-//     return;
-//   }
-//   else
-//   {
-//     step_count = step_count - 1;
-//     if (step_count < 0)
-//     {
-//        step_count = 3;
-//     }
-//     return;
-//   }
-// }
+// 
